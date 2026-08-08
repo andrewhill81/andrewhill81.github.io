@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0c0c0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Lift Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0c0e;
+  --card:#151518;
+  --card2:#1b1b1f;
+  --line:#26262b;
+  --bone:#ece7dd;
+  --gray:#8d8d96;
+  --dim:#5c5c64;
+  --pink:#ff2e88;
+  --pink-dim:#3a1226;
+  --yellow:#f5c518;
+  --yellow-dim:#3a3210;
+  --cond:'Oswald','Arial Narrow',sans-serif;
+  --body:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono','SF Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{
+  background:var(--bg);color:var(--bone);font-family:var(--body);
+  max-width:480px;margin:0 auto;min-height:100vh;
+  padding:14px 14px 108px 14px;
+  -webkit-font-smoothing:antialiased;
+  user-select:none;-webkit-user-select:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* ---------- masthead ---------- */
+.kicker{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--gray);text-transform:uppercase}
+h1.masthead{font-family:var(--cond);font-weight:700;font-size:44px;line-height:1;letter-spacing:.02em;text-transform:uppercase;margin:2px 0 10px}
+.rule{height:5px;background:var(--yellow);margin-bottom:14px}
+
+/* ---------- tabs ---------- */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:10px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+  padding:8px 14px;border-radius:999px;border:1px solid var(--line);color:var(--gray);
+}
+.tab.today{color:var(--bone)}
+.tab.sel{background:var(--bone);color:#111;border-color:var(--bone);font-weight:700}
+
+/* ---------- mode toggle ---------- */
+.modes{display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;margin-bottom:14px}
+.mode{flex:1;padding:10px 0;font-family:var(--cond);font-weight:600;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.mode.sel{background:var(--card2);color:var(--bone)}
+
+/* ---------- rest day ---------- */
+.restcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:26px 20px;margin-top:8px}
+.restcard .rk{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--yellow);text-transform:uppercase;margin-bottom:8px}
+.restcard h2{font-family:var(--cond);font-size:30px;font-weight:700;text-transform:uppercase;line-height:1.05;margin-bottom:10px}
+.restcard p{color:var(--gray);font-size:15px;line-height:1.5}
+
+/* ---------- guided header ---------- */
+.ghead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.ghead .l{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--pink);text-transform:uppercase}
+.ghead .r{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--gray)}
+.ghead .r .done{color:var(--yellow)}
+
+/* ---------- photo ---------- */
+.photo{
+  width:100%;height:31vh;min-height:170px;max-height:270px;border-radius:12px;border:1px solid var(--line);
+  background:var(--card);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:12px;
+}
+.photo img{width:100%;height:100%;object-fit:contain;display:block}
+.photo .noph{padding:22px;text-align:center;color:var(--gray);font-size:14px;line-height:1.5}
+.photo .noph b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--dim);margin-bottom:8px;font-weight:500}
+.pmodal{position:fixed;inset:0;background:rgba(6,6,8,.96);z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+.pmodal img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:8px}
+.pmodal .cap{font-family:var(--cond);font-size:22px;font-weight:600;text-transform:uppercase;margin-top:14px;letter-spacing:.04em}
+.pmodal .x{position:absolute;top:14px;right:18px;font-family:var(--mono);font-size:22px;color:var(--gray);padding:8px}
+
+/* ---------- exercise card ---------- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px;position:relative}
+.card.earned{border-color:var(--yellow)}
+.card .num{font-family:var(--mono);font-size:11px;color:var(--pink);letter-spacing:.1em;margin-bottom:4px}
+.card h3{font-family:var(--cond);font-size:26px;font-weight:700;text-transform:uppercase;line-height:1.05;letter-spacing:.02em}
+.card .note{color:var(--gray);font-size:13.5px;line-height:1.45;margin:6px 0 14px}
+
+/* weight stepper */
+.wrow{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.wbtn{
+  width:52px;height:48px;border-radius:11px;border:1px solid var(--line);background:var(--card2);
+  font-family:var(--mono);font-size:22px;color:var(--bone);flex:0 0 auto;
+}
+.wbtn:active{background:var(--line)}
+.wval{flex:1;text-align:center;font-family:var(--mono);font-size:30px;font-weight:700;letter-spacing:-.02em}
+.wval .u{font-size:14px;color:var(--gray);font-weight:400;margin-left:4px}
+.wval.unset{color:var(--dim);font-size:22px;font-weight:400;text-transform:lowercase}
+
+/* set rows */
+.srow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.slab{flex:0 0 34px;font-family:var(--mono);font-size:12px;color:var(--gray)}
+.slab .sw{display:block;font-size:9px;color:var(--dim);margin-top:1px}
+.chips{display:flex;gap:5px;flex:1;overflow-x:auto;scrollbar-width:none;padding:2px 0}
+.chips::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;min-width:37px;height:37px;border-radius:9px;border:1px solid var(--line);
+  font-family:var(--mono);font-size:13px;color:var(--gray);display:flex;align-items:center;justify-content:center;
+}
+.chip.tgt{border-color:#3d3a2a;color:#cbb96a}
+.chip.on{background:var(--bone);border-color:var(--bone);color:#111;font-weight:700}
+.chip.on.tgt{background:var(--yellow);border-color:var(--yellow);color:#111}
+.chip.fail{border-color:#39202c;color:#b0567f}
+.chip.fail.on{background:var(--pink);border-color:var(--pink);color:#fff}
+
+/* verdict */
+.verdict{display:flex;align-items:flex-start;gap:7px;margin-top:10px;font-size:13.5px;line-height:1.4}
+.vdot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto;margin-top:5px}
+.verdict.neutral{color:var(--gray)}
+.verdict.earned{color:var(--yellow)} .verdict.earned .vdot{background:var(--yellow)}
+.verdict.heavy{color:var(--pink)} .verdict.heavy .vdot{background:var(--pink)}
+.verdict.hold{color:var(--bone)} .verdict.hold .vdot{background:var(--bone)}
+.verdict.mixed{color:var(--pink)} .verdict.mixed .vdot{background:var(--pink)}
+.last{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:9px;letter-spacing:.02em}
+
+/* guided nav */
+.gnav{display:flex;gap:10px;margin:4px 0 14px}
+.gbtn{
+  flex:1;padding:15px 0;border-radius:11px;font-family:var(--cond);font-weight:600;font-size:16px;
+  letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);color:var(--gray);
+}
+.gbtn.pri{background:var(--card2);color:var(--bone);border-color:#333}
+.gbtn:active{background:var(--line)}
+.dots{display:flex;justify-content:center;gap:8px;margin-bottom:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:all .15s}
+.dot.done{background:var(--yellow)}
+.dot.cur{width:11px;height:11px;background:var(--bone)}
+.dot.cur.done{background:var(--yellow)}
+
+/* full-day */
+.sechead{font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--gray);text-transform:uppercase;margin:18px 0 8px}
+
+/* ---------- bottom bar ---------- */
+.bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:50;
+  background:rgba(12,12,14,.97);border-top:1px solid var(--line);
+  box-shadow:0 -8px 24px rgba(0,0,0,.5);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+}
+.barin{max-width:452px;margin:0 auto;display:flex;gap:9px;align-items:center}
+.timer{
+  flex:0 0 auto;min-width:86px;padding:13px 14px;border-radius:999px;border:1px solid var(--line);
+  font-family:var(--mono);font-size:16px;text-align:center;color:var(--gray);
+}
+.timer.run{border-color:var(--pink);color:var(--pink);font-weight:700}
+.timer.go{background:var(--yellow);border-color:var(--yellow);color:#111;font-weight:700;font-family:var(--cond);letter-spacing:.1em;text-transform:uppercase}
+.savebtn{
+  flex:1;padding:14px 0;border-radius:11px;background:var(--pink);color:#fff;
+  font-family:var(--cond);font-weight:700;font-size:17px;letter-spacing:.08em;text-transform:uppercase;
+}
+.savebtn:active{filter:brightness(.85)}
+.resetbtn{flex:0 0 auto;padding:13px 12px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.storagewarn{
+  max-width:452px;margin:0 auto 8px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  color:var(--pink);display:none;text-align:center;
+}
+.storagewarn.show{display:block}
+
+/* ---------- footer ---------- */
+.foot{margin:6px 0 10px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.06em}
+.foot button{font-family:var(--mono);font-size:11px;color:var(--gray);letter-spacing:.06em;padding:8px 6px;text-decoration:underline;text-underline-offset:3px}
+
+/* ---------- toast ---------- */
+.toast{
+  position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(8px);z-index:70;
+  background:var(--bone);color:#111;font-family:var(--mono);font-size:13px;font-weight:500;
+  padding:11px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:all .18s;
+  white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--pink);color:#fff;white-space:normal;border-radius:14px;text-align:center;line-height:1.4}
+</style>
+</head>
+<body>
+
+<div class="kicker" id="kick">UPPER / LOWER &middot; 4 DAYS</div>
+<h1 class="masthead">Lift Log</h1>
+<div class="rule"></div>
+
+<div class="tabs" id="tabs"></div>
+<div class="modes" id="modes"></div>
+<div id="main"></div>
+<div class="foot"><button id="exp">Export data</button> &middot; <button id="imp">Import</button></div>
+<input type="file" id="importin" accept="application/json,.json" style="display:none">
+
+<div class="bar">
+  <div class="storagewarn" id="swarn">storage offline &mdash; taps held in memory, will retry</div>
+  <div class="barin">
+    <button class="timer" id="timer">Rest</button>
+    <button class="savebtn" id="save">Save Session</button>
+    <button class="resetbtn" id="reset">Reset</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="photoin" accept="image/*" capture="environment" style="display:none">
+
+<script>
+'use strict';
+/* ================= program ================= */
+const MAIN={min:8,max:12,chips:[8,9,10,11,12,13,14,15],rest:90};
+const CORE={min:15,max:20,chips:[15,16,17,18,19,20,21,22,23],rest:60};
+const EX={
+  legpress:{name:'Leg Press',type:'main',sets:3,w0:65,note:'Feet mid-platform, knees track over toes. Do not lock out.'},
+  legcurl:{name:'Leg Curl',type:'main',sets:3,w0:null,note:'Your hamstrings are the weak link. Slow on the way back.'},
+  legext:{name:'Leg Extension',type:'main',sets:3,w0:null,note:'Pause one second at the top.'},
+  hipabd:{name:'Hip Abduction',type:'main',sets:3,w0:null,note:'The glute work your original plan was missing.'},
+  abcrunch:{name:'Abdominal Crunch',type:'core',sets:3,w0:60,note:'Reps, not load. Add weight only past 20.'},
+  sacrunch:{name:'Straight Arm Crunch',type:'core',sets:3,w0:60,note:'Arms stay locked. The crunch comes from the ribs, not the arms.'},
+  twist:{name:'Torso Twist',type:'core',sets:4,w0:60,labels:['L1','L2','R1','R2'],note:'Directional. Two sets each way, left first.'},
+  chest:{name:'Chest Press',type:'main',sets:3,w0:40,note:'Set the seat so the handles start at shoulder height.'},
+  pulldown:{name:'Pulldown',type:'main',sets:3,w0:null,note:'Pull to the collarbone, elbows down, no leaning back.'},
+  shoulder:{name:'Shoulder Press',type:'main',sets:3,w0:45,note:'Overhead climbs slower than everything else. Stalling here is normal.'},
+  row:{name:'Row',type:'main',sets:3,w0:null,note:'Squeeze the shoulder blades, chest stays on the pad.'},
+  triceps:{name:'Triceps Press',type:'main',sets:3,w0:85,note:'Arms last, on purpose. You are already warm.'},
+  biceps:{name:'Biceps Curl',type:'main',sets:3,w0:null,note:'No swinging. If it swings, drop a plate.'}
+};
+const LOWER=[{label:'Legs',ex:['legpress','legcurl','legext','hipabd']},{label:'Core',ex:['abcrunch','sacrunch','twist']}];
+const UPPER=[{label:'Push / Pull alternating',ex:['chest','pulldown','shoulder','row','triceps','biceps']}];
+const DAYS=[
+  {key:'mon',lab:'Mon',lift:true,title:'Lower + Core',sections:LOWER},
+  {key:'tue',lab:'Tue',lift:true,title:'Upper',sections:UPPER},
+  {key:'wed',lab:'Wed',lift:false,title:'Rest &mdash; Cardio + Walk',line:'No lifting. This day is what makes Thursday and Friday productive.'},
+  {key:'thu',lab:'Thu',lift:true,title:'Lower + Core',sections:LOWER},
+  {key:'fri',lab:'Fri',lift:true,title:'Upper',sections:UPPER},
+  {key:'sat',lab:'Sat',lift:false,title:'Rest &mdash; Walk',line:'Easy pace, real distance. Recovery is part of the program.'},
+  {key:'sun',lab:'Sun',lift:false,title:'Rest &mdash; Walk',line:'One more easy day. Monday it all starts again.'}
+];
+function scheme(id){return EX[id].type==='core'?CORE:MAIN}
+function setLabels(id){return EX[id].labels||Array.from({length:EX[id].sets},(_,i)=>'S'+(i+1))}
+
+/* ================= storage ================= */
+const KEY='liftlog.v1', PKEY='liftlog.photos.v1';
+let storageBlocked=false;   // last write failed
+let loadCorrupt=false;      // stored data unreadable -> never overwrite it
+let state={weights:{},history:{},pending:null};
+let photos={};
+
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function fmtDate(iso){const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+
+function loadState(){
+  let raw=null;
+  try{raw=localStorage.getItem(KEY)}catch(e){storageBlocked=true}
+  if(raw!==null){
+    try{
+      const s=JSON.parse(raw);
+      if(s&&typeof s==='object'&&s.weights&&s.history!==undefined){state=s}
+      else{loadCorrupt=true}
+    }catch(e){loadCorrupt=true}
+  }
+  try{const p=localStorage.getItem(PKEY);if(p)photos=JSON.parse(p)||{}}catch(e){}
+  // seed starting weights for exercises never seen
+  for(const id in EX){if(!(id in state.weights))state.weights[id]=EX[id].w0}
+  if(!state.history)state.history={};
+}
+function persistState(){
+  if(loadCorrupt){storageBlocked=true;updateWarn();return false} // rule 4: never write over unreadable real data
+  try{
+    localStorage.setItem(KEY,JSON.stringify(state));
+    storageBlocked=false;updateWarn();return true;
+  }catch(e){storageBlocked=true;updateWarn();return false}
+}
+function persistPhotos(){
+  try{localStorage.setItem(PKEY,JSON.stringify(photos));return true}catch(e){return false}
+}
+function updateWarn(){document.getElementById('swarn').classList.toggle('show',storageBlocked||loadCorrupt)}
+
+/* ================= pending taps ================= */
+function ensurePending(){
+  const t=todayStr();
+  if(!state.pending||state.pending.date!==t){
+    if(state.pending&&state.pending.date!==t)finalize(state.pending.date); // auto-finalize forgotten session
+    state.pending={date:t,taps:{}};
+  }
+  return state.pending;
+}
+function getTap(id,i){const p=state.pending;return p&&p.taps[id]?p.taps[id][i]:undefined}
+function setTap(id,i,val){
+  const p=ensurePending();
+  if(!p.taps[id])p.taps[id]={};
+  if(val===undefined){delete p.taps[id][i];if(!Object.keys(p.taps[id]).length)delete p.taps[id]}
+  else p.taps[id][i]=val;
+  persistState();
+}
+function loggedCount(id){const p=state.pending;return p&&p.taps[id]?Object.keys(p.taps[id]).length:0}
+
+/* ================= progression ================= */
+function judge(id){
+  const s=scheme(id),n=EX[id].sets,taps=state.pending&&state.pending.taps[id]||{};
+  const logged=Object.values(taps);
+  if(logged.length<n)return{cls:'neutral',msg:'Target '+s.min+'&ndash;'+s.max+' reps'};
+  const ws=[...new Set(logged.map(t=>t.w))];
+  if(ws.length>1)return{cls:'mixed',msg:'Loads varied ('+ws.join(', ')+'). Settle on one, then chase '+s.max+'.'};
+  if(logged.every(t=>t.reps>=s.max))return{cls:'earned',msg:'Earned it. Add 5 lb next session.'};
+  if(logged.some(t=>t.reps<s.min))return{cls:'heavy',msg:'Too heavy. Drop 5 lb and rebuild.'};
+  const word=n===4?'four':'three';
+  return{cls:'hold',msg:'Hold this weight. Climb to '+s.max+' on all '+word+'.'};
+}
+/* finalize a day's taps into history; returns # of weight bumps */
+function finalize(dateISO){
+  const p=state.pending;
+  if(!p||!Object.keys(p.taps).length)return 0;
+  let bumps=0;
+  for(const id in p.taps){
+    const taps=p.taps[id],n=EX[id].sets,s=scheme(id);
+    const sets=[];
+    for(let i=0;i<n;i++)if(taps[i])sets.push({w:taps[i].w,reps:taps[i].reps});
+    if(!sets.length)continue;
+    if(!state.history[id])state.history[id]=[];
+    state.history[id]=state.history[id].filter(h=>h.date!==dateISO); // re-save replaces, never duplicates
+    state.history[id].push({date:dateISO,sets:sets});
+    state.history[id].sort((a,b)=>a.date<b.date?-1:1);
+    const ws=[...new Set(sets.map(t=>t.w))];
+    if(sets.length===n&&ws.length===1&&sets.every(t=>t.reps>=s.max)){
+      state.weights[id]=ws[0]+5;bumps++;
+    }
+  }
+  state.pending={date:todayStr(),taps:{}};
+  return bumps;
+}
+function lastLine(id){
+  const h=state.history[id];
+  if(!h||!h.length)return null;
+  const e=h[h.length-1],min=scheme(id).min;
+  return 'Last: '+e.sets.map(s=>s.w+'×'+(s.reps<min?'&lt;'+min:s.reps)).join('&nbsp; ')+' &middot; '+fmtDate(e.date);
+}
+
+/* ================= ui state ================= */
+const jsDay=new Date().getDay(); // 0 sun
+let selDay=(jsDay+6)%7;          // 0 mon
+let mode='guided';
+let gIdx={};                     // guided index per day key
+let photoTarget=null;
+
+/* ================= render ================= */
+const $=id=>document.getElementById(id);
+function esc(s){return s}
+
+function renderTabs(){
+  const tt=(jsDay+6)%7;
+  $('tabs').innerHTML=DAYS.map((d,i)=>
+    '<button class="tab'+(i===selDay?' sel':'')+(i===tt?' today':'')+'" data-i="'+i+'">'+d.lab+'</button>').join('');
+  $('tabs').querySelectorAll('.tab').forEach(b=>b.onclick=()=>{selDay=+b.dataset.i;stopTimer();render()});
+}
+function renderModes(){
+  const d=DAYS[selDay];
+  $('modes').style.display=d.lift?'flex':'none';
+  $('modes').innerHTML=
+    '<button class="mode'+(mode==='guided'?' sel':'')+'" data-m="guided">Guided</button>'+
+    '<button class="mode'+(mode==='full'?' sel':'')+'" data-m="full">Full day</button>';
+  $('modes').querySelectorAll('.mode').forEach(b=>b.onclick=()=>{mode=b.dataset.m;render()});
+}
+function flatEx(d){return d.sections.flatMap(s=>s.ex)}
+function sectionOf(d,id){for(const s of d.sections)if(s.ex.includes(id))return s.label;return ''}
+
+function cardHTML(id,num){
+  const e=EX[id],s=scheme(id),w=state.weights[id],labels=setLabels(id);
+  const v=judge(id);
+  let html='<div class="card'+(v.cls==='earned'?' earned':'')+'" data-ex="'+id+'">';
+  if(num!==undefined)html+='<div class="num">'+String(num).padStart(2,'0')+'</div>';
+  html+='<h3>'+e.name+'</h3><div class="note">'+e.note+'</div>';
+  html+='<div class="wrow">'+
+    '<button class="wbtn" data-act="minus">&minus;</button>'+
+    (w==null?'<div class="wval unset">set</div>'
+            :'<div class="wval">'+w+'<span class="u">lb</span></div>')+
+    '<button class="wbtn" data-act="plus">+</button></div>';
+  for(let i=0;i<e.sets;i++){
+    const tap=getTap(id,i);
+    const swNote=(tap&&tap.w!==w)?'<span class="sw">'+tap.w+'</span>':'';
+    html+='<div class="srow"><div class="slab">'+labels[i]+swNote+'</div><div class="chips">';
+    const fr=s.min-1;
+    html+='<button class="chip fail'+(tap&&tap.reps===fr?' on':'')+'" data-set="'+i+'" data-reps="'+fr+'">&lt;'+s.min+'</button>';
+    for(const r of s.chips){
+      const on=tap&&tap.reps===r;
+      html+='<button class="chip'+(r>=s.max?' tgt':'')+(on?' on':'')+'" data-set="'+i+'" data-reps="'+r+'">'+r+'</button>';
+    }
+    html+='</div></div>';
+  }
+  html+='<div class="verdict '+v.cls+'"><span class="vdot"></span><span>'+v.msg+'</span></div>';
+  const ll=lastLine(id);
+  if(ll)html+='<div class="last">'+ll+'</div>';
+  html+='</div>';
+  return html;
+}
+function bindCard(el){
+  const id=el.dataset.ex,e=EX[id],s=scheme(id);
+  el.querySelectorAll('.wbtn').forEach(b=>b.onclick=()=>{
+    let w=state.weights[id];
+    if(b.dataset.act==='plus')w=(w==null?5:w+5);
+    else{if(w==null)return;w=Math.max(5,w-5)}
+    state.weights[id]=w;persistState();render();
+  });
+  el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
+    const w=state.weights[id];
+    if(w==null){toast('Set a weight first');return}
+    const i=+b.dataset.set,r=+b.dataset.reps,cur=getTap(id,i);
+    if(cur&&cur.reps===r){setTap(id,i,undefined)}
+    else{setTap(id,i,{w:w,reps:r});startTimer(s.rest)}
+    render();
+  });
+}
+
+function renderMain(){
+  const d=DAYS[selDay],m=$('main');
+  if(!d.lift){
+    m.innerHTML='<div class="restcard"><div class="rk">Rest Day</div><h2>'+d.title+'</h2><p>'+d.line+'</p></div>';
+    return;
+  }
+  const ids=flatEx(d);
+  if(mode==='guided'){
+    if(gIdx[d.key]===undefined)gIdx[d.key]=0;
+    const gi=Math.min(gIdx[d.key],ids.length-1);gIdx[d.key]=gi;
+    const id=ids[gi],doneCur=loggedCount(id)>=EX[id].sets;
+    let html='<div class="ghead"><span class="l">NEXT UP &middot; '+sectionOf(d,id).toUpperCase()+'</span>'+
+      '<span class="r">'+(gi+1)+' OF '+ids.length+(doneCur?' <span class="done">&middot; done</span>':'')+'</span></div>';
+    const ph=photos[id];
+    if(ph)html+='<div class="photo" data-ph="view"><img src="'+ph+'" alt="'+EX[id].name+'"></div>';
+    else html+='<div class="photo" data-ph="add"><div class="noph"><b>No photo yet</b>Snap this machine next time you’re in and I’ll add it.<br><span style="color:var(--dim);font-size:12px">(tap here to add one now)</span></div></div>';
+    html+=cardHTML(id);
+    html+='<div class="gnav"><button class="gbtn" id="gback">Back</button><button class="gbtn pri" id="gnext">Next machine</button></div>';
+    html+='<div class="dots">'+ids.map((x,i)=>{
+      const c=loggedCount(x)>=EX[x].sets;
+      return '<span class="dot'+(i===gi?' cur':'')+(c?' done':'')+'"></span>';
+    }).join('')+'</div>';
+    m.innerHTML=html;
+    bindCard(m.querySelector('.card'));
+    const phEl=m.querySelector('.photo');
+    if(phEl){
+      phEl.onclick=()=>{
+        if(phEl.dataset.ph==='view')openPhoto(id);
+        else{photoTarget=id;$('photoin').click()}
+      };
+    }
+    $('gback').onclick=()=>{if(gi>0){gIdx[d.key]=gi-1;stopTimer();render()}};
+    $('gnext').onclick=()=>{if(gi<ids.length-1){gIdx[d.key]=gi+1;stopTimer();render()}else toast('Last machine of the day')};
+  }else{
+    let html='',n=0;
+    for(const sec of d.sections){
+      html+='<div class="sechead">'+sec.label+'</div>';
+      for(const id of sec.ex){n++;html+=cardHTML(id,n)}
+    }
+    m.innerHTML=html;
+    m.querySelectorAll('.card').forEach(bindCard);
+  }
+}
+function render(){renderTabs();renderModes();renderMain();updateWarn()}
+
+/* ================= photo modal / upload ================= */
+function openPhoto(id){
+  const ov=document.createElement('div');
+  ov.className='pmodal';
+  ov.innerHTML='<button class="x">&times;</button><img src="'+photos[id]+'"><div class="cap">'+EX[id].name+'</div>';
+  ov.onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+}
+$('photoin').addEventListener('change',ev=>{
+  const f=ev.target.files[0];ev.target.value='';
+  if(!f||!photoTarget)return;
+  const id=photoTarget;photoTarget=null;
+  const img=new Image();
+  img.onload=()=>{
+    const max=900,sc=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    photos[id]=c.toDataURL('image/jpeg',0.72);
+    if(!persistPhotos())toast('Photo kept for now — storage refused to keep it permanently','err');
+    URL.revokeObjectURL(img.src);render();
+  };
+  img.src=URL.createObjectURL(f);
+});
+
+/* ================= timer ================= */
+let tInt=null,tLeft=0,tState='idle'; // idle|run|go
+function startTimer(sec){
+  clearInterval(tInt);tLeft=sec;tState='run';paintTimer();
+  tInt=setInterval(()=>{
+    tLeft--;
+    if(tLeft<=0){clearInterval(tInt);tState='go';paintTimer();vibe()}
+    else paintTimer();
+  },1000);
+}
+function stopTimer(){clearInterval(tInt);tState='idle';paintTimer()}
+function paintTimer(){
+  const el=$('timer');
+  el.classList.remove('run','go');
+  if(tState==='run'){el.classList.add('run');el.textContent=Math.floor(tLeft/60)+':'+String(tLeft%60).padStart(2,'0')}
+  else if(tState==='go'){el.classList.add('go');el.textContent='Go'}
+  else el.textContent='Rest';
+}
+function vibe(){try{navigator.vibrate&&navigator.vibrate([180,90,180])}catch(e){}}
+$('timer').onclick=stopTimer;
+
+/* ================= toast ================= */
+let toastT=null;
+function toast(msg,cls){
+  const t=$('toast');
+  t.className='toast show'+(cls?' '+cls:'');
+  t.innerHTML=msg;
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>t.classList.remove('show'),cls==='err'?5200:2200);
+}
+
+/* ================= save / reset ================= */
+$('save').onclick=()=>{
+  ensurePending();
+  const taps=state.pending.taps;
+  if(!Object.keys(taps).length){toast('Nothing logged yet');return}
+  // rule 2: commit to storage first; only clear the screen on confirmed write
+  const snapshot=JSON.stringify(state);
+  const bumps=finalize(todayStr());
+  if(!persistState()){
+    state=JSON.parse(snapshot);            // roll back: sets stay on screen untouched
+    toast('NOT SAVED — storage refused. Your sets are still on screen. Wait a minute and hit Save again.','err');
+    render();return;
+  }
+  stopTimer();
+  toast(bumps>0?'Saved · '+bumps+' weight'+(bumps>1?'s':'')+' up':'Session saved');
+  render();
+};
+$('reset').onclick=()=>{
+  ensurePending();
+  const d=DAYS[selDay];
+  if(!d.lift)return;
+  const ids=flatEx(d);
+  let had=false;
+  for(const id of ids)if(state.pending.taps[id]){delete state.pending.taps[id];had=true}
+  if(!had){toast('Nothing logged yet');return}
+  persistState();stopTimer();toast('Day cleared');render();
+};
+
+/* ================= export / import ================= */
+$('exp').onclick=()=>{
+  const payload={app:'liftlog',v:1,exported:todayStr(),weights:state.weights,history:state.history,pending:state.pending};
+  const blob=new Blob([JSON.stringify(payload,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='lift-log-backup-'+todayStr()+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Backup exported');
+};
+$('imp').onclick=()=>$('importin').click();
+$('importin').addEventListener('change',ev=>{
+  const f=ev.target.files[0];ev.target.value='';
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let d=null;
+    try{d=JSON.parse(rd.result)}catch(e){}
+    if(!d||d.app!=='liftlog'||!d.weights||!d.history){toast('Not a Lift Log backup file','err');return}
+    if(!confirm('Replace the log on this phone with the backup from '+(d.exported||'unknown date')+'? Current data will be overwritten.'))return;
+    state={weights:d.weights,history:d.history,pending:d.pending||null};
+    for(const id in EX){if(!(id in state.weights))state.weights[id]=EX[id].w0}
+    loadCorrupt=false;
+    ensurePending();
+    if(persistState())toast('Backup restored');
+    else toast('Restored on screen, but storage refused to keep it. Export again to be safe.','err');
+    render();
+  };
+  rd.readAsText(f);
+});
+
+/* ================= boot ================= */
+loadState();
+if(loadCorrupt){
+  toast('Stored log unreadable — running in memory, nothing was overwritten','err');
+}else{
+  // auto-finalize a forgotten session from a previous day
+  const stale=(state.pending&&state.pending.date!==todayStr()&&Object.keys(state.pending.taps).length)?state.pending.date:null;
+  if(stale){
+    const b=finalize(stale);
+    if(persistState())toast(fmtDate(stale)+' — saved automatically'+(b?' · '+b+' weight'+(b>1?'s':'')+' up':''));
+  }else{
+    ensurePending();persistState();
+  }
+}
+render();
+</script>
+</body>
+</html>
