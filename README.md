@@ -29,7 +29,7 @@ Direct, short, honest. No exclamation points, no praise-speak. Dark industrial l
 
 ### Machine photos
 
-`photos` map (exercise id → dataURL) in `liftlog.photos.v1`, added via in-app camera on the placeholder card. If Andy supplies photos in chat, they may be baked into the file as a `BAKED_PHOTOS` object — keep total page weight reasonable (compress to ≤900px JPEG ~0.72).
+Baked photos ship as repo files in `photos/<exerciseid>.jpg` (≤900px JPEG ~q72), referenced by the `BAKED_PHOTOS` map in `index.html` (exercise id → relative URL). Photos taken with the in-app camera are stored as dataURLs in `liftlog.photos.v1` and override the baked one per machine; `persistPhotos()` writes only the user's own photos, never baked entries. As of Aug 2026 every machine has a baked photo except leg curl. Keep new photos ≤900px JPEG ~q72.
 
 ### Testing
 
