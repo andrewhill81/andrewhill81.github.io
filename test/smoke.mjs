@@ -8,7 +8,16 @@ const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page = await ctx.newPage();
 page.on('pageerror', e => { console.log('PAGEERROR', e.message); fails.push('pageerror: ' + e.message); });
 
-// Force "today = Tuesday" is real anyway (Aug 4 2026 is Tuesday). Load.
+// Pin the clock to Tue Aug 4 2026 so the suite passes on any real-world day.
+await page.addInitScript(() => {
+  const OrigDate = Date;
+  const FIXED = [2026, 7, 4, 10, 0, 0]; // Tue Aug 4 2026 10:00
+  class FakeDate extends OrigDate {
+    constructor(...a) { if (a.length === 0) { super(...FIXED); } else { super(...a); } }
+    static now() { return new OrigDate(...FIXED).getTime(); }
+  }
+  window.Date = FakeDate;
+});
 await page.goto(url);
 await page.waitForTimeout(300);
 
@@ -110,7 +119,17 @@ ok('Mon leg press at 70 with last line', await page.evaluate(() => {
     document.querySelector('.last').textContent.includes('65×12') &&
     document.querySelector('.last').textContent.includes('Aug 3');
 }));
-ok('no-photo placeholder', await page.evaluate(() => document.querySelector('.photo .noph') !== null));
+ok('baked photo on leg press', await page.evaluate(() => {
+  const img = document.querySelector('.photo img');
+  return img !== null && img.getAttribute('src') === 'photos/legpress.jpg';
+}));
+await page.evaluate(() => document.getElementById('gnext').click()); // leg curl: only machine without a baked photo
+await page.waitForTimeout(150);
+ok('no-photo placeholder on leg curl', await page.evaluate(() =>
+  document.querySelector('.card h3').textContent.toUpperCase().includes('LEG CURL') &&
+  document.querySelector('.photo .noph') !== null));
+await page.evaluate(() => document.getElementById('gback').click());
+await page.waitForTimeout(150);
 
 // 8. Rest day card (Wed)
 await page.evaluate(() => document.querySelectorAll('.tab')[2].click());
@@ -230,4 +249,3 @@ ok('re-save replaces same-day entry', await page.evaluate(() => {
 await browser.close();
 console.log(fails.length ? '\n' + fails.length + ' FAILURES' : '\nALL PASS');
 process.exit(fails.length ? 1 : 0);
-
