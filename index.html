@@ -245,6 +245,22 @@ function setLabels(id){return EX[id].labels||Array.from({length:EX[id].sets},(_,
 
 /* ================= storage ================= */
 const KEY='liftlog.v1', PKEY='liftlog.photos.v1';
+/* Machine photos shipped with the app (repo files). A photo taken in-app
+   (stored in liftlog.photos.v1) overrides the baked one for that machine. */
+const BAKED_PHOTOS={
+  legpress:'photos/legpress.jpg',
+  legext:'photos/legext.jpg',
+  hipabd:'photos/hipabd.jpg',
+  abcrunch:'photos/abcrunch.jpg',
+  sacrunch:'photos/sacrunch.jpg',
+  twist:'photos/twist.jpg',
+  chest:'photos/chest.jpg',
+  pulldown:'photos/pulldown.jpg',
+  shoulder:'photos/shoulder.jpg',
+  row:'photos/row.jpg',
+  triceps:'photos/triceps.jpg',
+  biceps:'photos/biceps.jpg'
+};
 let storageBlocked=false;   // last write failed
 let loadCorrupt=false;      // stored data unreadable -> never overwrite it
 let state={weights:{},history:{},pending:null};
@@ -264,6 +280,7 @@ function loadState(){
     }catch(e){loadCorrupt=true}
   }
   try{const p=localStorage.getItem(PKEY);if(p)photos=JSON.parse(p)||{}}catch(e){}
+  photos=Object.assign({},BAKED_PHOTOS,photos); // user's own photos win
   // seed starting weights for exercises never seen
   for(const id in EX){if(!(id in state.weights))state.weights[id]=EX[id].w0}
   if(!state.history)state.history={};
@@ -276,7 +293,10 @@ function persistState(){
   }catch(e){storageBlocked=true;updateWarn();return false}
 }
 function persistPhotos(){
-  try{localStorage.setItem(PKEY,JSON.stringify(photos));return true}catch(e){return false}
+  // store only the user's own photos, never the baked repo files
+  const own={};
+  for(const k in photos)if(photos[k]!==BAKED_PHOTOS[k])own[k]=photos[k];
+  try{localStorage.setItem(PKEY,JSON.stringify(own));return true}catch(e){return false}
 }
 function updateWarn(){document.getElementById('swarn').classList.toggle('show',storageBlocked||loadCorrupt)}
 
