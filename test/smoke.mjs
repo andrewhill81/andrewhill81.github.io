@@ -95,7 +95,40 @@ ok('history stored', await page.evaluate(() => {
   const h = s.history.chest;
   return h && h.length === 1 && h[0].sets.length === 3 && s.weights.chest === 45;
 }));
-ok('taps cleared after save', await page.evaluate(() => document.querySelectorAll('.chip.on').length === 0));
+ok('saved sets stay visible after save', await page.evaluate(() => document.querySelectorAll('.chip.on').length === 3));
+ok('saved-today verdict still earned', await page.evaluate(() => document.querySelector('.verdict').textContent.includes('Earned it')));
+ok('historical weight noted under set labels', await page.evaluate(() => [...document.querySelectorAll('.slab .sw')].filter(e => e.textContent === '40').length === 3));
+// navigate away and back — chips must survive the round trip
+await page.evaluate(() => document.getElementById('gnext').click());
+await page.waitForTimeout(120);
+await page.evaluate(() => document.getElementById('gback').click());
+await page.waitForTimeout(120);
+ok('saved sets survive machine switching', await page.evaluate(() =>
+  document.querySelector('.card h3').textContent.toUpperCase().includes('CHEST') &&
+  document.querySelectorAll('.chip.on').length === 3));
+// stale-tab safety: another tab logs a pulldown set; this tab re-syncs when shown
+await page.evaluate(() => {
+  const s = JSON.parse(localStorage.getItem('liftlog.v1'));
+  s.pending.taps.pulldown = { 0: { w: 70, reps: 11 } };
+  localStorage.setItem('liftlog.v1', JSON.stringify(s));
+  document.dispatchEvent(new Event('visibilitychange'));
+});
+await page.waitForTimeout(150);
+ok('visible sync adopts other-tab taps', await page.evaluate(() => {
+  document.getElementById('gnext').click(); // pulldown is 2 of 6
+  return new Promise(res => setTimeout(() => {
+    res(document.querySelector('.card h3').textContent.toUpperCase().includes('PULLDOWN') &&
+        document.querySelectorAll('.chip.on').length === 1);
+  }, 120));
+}));
+await page.evaluate(() => { // clean up: drop the synthetic pulldown tap, back to chest
+  const s = JSON.parse(localStorage.getItem('liftlog.v1'));
+  delete s.pending.taps.pulldown;
+  localStorage.setItem('liftlog.v1', JSON.stringify(s));
+  document.dispatchEvent(new Event('visibilitychange'));
+  document.getElementById('gback').click();
+});
+await page.waitForTimeout(120);
 
 // 6. Stale-day auto-finalize: plant pending from yesterday, reload
 await page.evaluate(() => {
@@ -245,6 +278,25 @@ ok('re-save replaces same-day entry', await page.evaluate(() => {
   const h = s.history.chest;
   return h.length === 1 && h[0].sets[0].reps === 11;
 }));
+
+// 15. Timer is wall-clock based: backgrounding can't stall it
+await page.evaluate(() => {
+  const row = document.querySelectorAll('.srow')[0];
+  const chip = [...row.querySelectorAll('.chip')].find(c => c.dataset.reps === '10' && !c.classList.contains('on'));
+  (chip || row.querySelector('.chip.on')).click(); // ensure a tap starts the 90s timer
+});
+await page.waitForTimeout(100);
+ok('timer starts on tap', await page.evaluate(() => document.getElementById('timer').classList.contains('run')));
+await page.evaluate(() => {
+  // simulate returning from 2 minutes in another app: jump the clock, fire visibilitychange
+  const base = Date.now();
+  Date.now = () => base + 120000;
+  document.dispatchEvent(new Event('visibilitychange'));
+});
+await page.waitForTimeout(100);
+ok('timer shows Go after backgrounded elapse', await page.evaluate(() =>
+  document.getElementById('timer').classList.contains('go') &&
+  document.getElementById('timer').textContent === 'Go'));
 
 await browser.close();
 console.log(fails.length ? '\n' + fails.length + ' FAILURES' : '\nALL PASS');
