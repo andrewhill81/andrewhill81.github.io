@@ -318,11 +318,32 @@ function setTap(id,i,val){
   persistState();
 }
 function loggedCount(id){const p=state.pending;return p&&p.taps[id]?Object.keys(p.taps[id]).length:0}
+/* Same-day continuity: a machine's sets stay visible in the chips all day,
+   whether they're still pending or already saved into history. */
+function todaySets(id){
+  const h=state.history[id];if(!h||!h.length)return null;
+  const e=h[h.length-1];
+  return e.date===todayStr()?e.sets:null;
+}
+function effTap(id,i){
+  const p=state.pending;
+  if(p&&p.taps[id])return p.taps[id][i]; // pending exists: it is the truth
+  const hs=todaySets(id);
+  return hs&&hs[i]?hs[i]:undefined;
+}
+function effCount(id){
+  const p=state.pending;
+  if(p&&p.taps[id])return Object.keys(p.taps[id]).length;
+  const hs=todaySets(id);
+  return hs?hs.length:0;
+}
 
 /* ================= progression ================= */
 function judge(id){
-  const s=scheme(id),n=EX[id].sets,taps=state.pending&&state.pending.taps[id]||{};
-  const logged=Object.values(taps);
+  const s=scheme(id),n=EX[id].sets;
+  let logged;
+  if(state.pending&&state.pending.taps[id])logged=Object.values(state.pending.taps[id]);
+  else logged=todaySets(id)||[];
   if(logged.length<n)return{cls:'neutral',msg:'Target '+s.min+'&ndash;'+s.max+' reps'};
   const ws=[...new Set(logged.map(t=>t.w))];
   if(ws.length>1)return{cls:'mixed',msg:'Loads varied ('+ws.join(', ')+'). Settle on one, then chase '+s.max+'.'};
@@ -400,7 +421,7 @@ function cardHTML(id,num){
             :'<div class="wval">'+w+'<span class="u">lb</span></div>')+
     '<button class="wbtn" data-act="plus">+</button></div>';
   for(let i=0;i<e.sets;i++){
-    const tap=getTap(id,i);
+    const tap=effTap(id,i);
     const swNote=(tap&&tap.w!==w)?'<span class="sw">'+tap.w+'</span>':'';
     html+='<div class="srow"><div class="slab">'+labels[i]+swNote+'</div><div class="chips">';
     const fr=s.min-1;
@@ -428,7 +449,14 @@ function bindCard(el){
   el.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{
     const w=state.weights[id];
     if(w==null){toast('Set a weight first');return}
-    const i=+b.dataset.set,r=+b.dataset.reps,cur=getTap(id,i);
+    const i=+b.dataset.set,r=+b.dataset.reps;
+    // editing a machine already saved today: pull its saved sets back into
+    // pending first, so the correction replaces today's entry, never duplicates
+    if(!(state.pending&&state.pending.taps[id])){
+      const hs=todaySets(id);
+      if(hs){const p=ensurePending();p.taps[id]={};hs.forEach((s2,j)=>{p.taps[id][j]={w:s2.w,reps:s2.reps}})}
+    }
+    const cur=getTap(id,i);
     if(cur&&cur.reps===r){setTap(id,i,undefined)}
     else{setTap(id,i,{w:w,reps:r});startTimer(s.rest)}
     render();
@@ -445,7 +473,7 @@ function renderMain(){
   if(mode==='guided'){
     if(gIdx[d.key]===undefined)gIdx[d.key]=0;
     const gi=Math.min(gIdx[d.key],ids.length-1);gIdx[d.key]=gi;
-    const id=ids[gi],doneCur=loggedCount(id)>=EX[id].sets;
+    const id=ids[gi],doneCur=effCount(id)>=EX[id].sets;
     let html='<div class="ghead"><span class="l">NEXT UP &middot; '+sectionOf(d,id).toUpperCase()+'</span>'+
       '<span class="r">'+(gi+1)+' OF '+ids.length+(doneCur?' <span class="done">&middot; done</span>':'')+'</span></div>';
     const ph=photos[id];
@@ -454,7 +482,7 @@ function renderMain(){
     html+=cardHTML(id);
     html+='<div class="gnav"><button class="gbtn" id="gback">Back</button><button class="gbtn pri" id="gnext">Next machine</button></div>';
     html+='<div class="dots">'+ids.map((x,i)=>{
-      const c=loggedCount(x)>=EX[x].sets;
+      const c=effCount(x)>=EX[x].sets;
       return '<span class="dot'+(i===gi?' cur':'')+(c?' done':'')+'"></span>';
     }).join('')+'</div>';
     m.innerHTML=html;
@@ -506,23 +534,58 @@ $('photoin').addEventListener('change',ev=>{
 });
 
 /* ================= timer ================= */
-let tInt=null,tLeft=0,tState='idle'; // idle|run|go
+/* Deadline-based: remaining time is computed from the wall clock, so the
+   countdown stays honest when the app is backgrounded (intervals get
+   throttled or suspended there). On return, visibilitychange re-syncs. */
+let tInt=null,tEnd=0,tState='idle'; // idle|run|go
+function timerLeft(){return Math.ceil((tEnd-Date.now())/1000)}
+function timerTick(){
+  if(tState!=='run')return;
+  if(timerLeft()<=0){clearInterval(tInt);tState='go';paintTimer();vibe()}
+  else paintTimer();
+}
 function startTimer(sec){
-  clearInterval(tInt);tLeft=sec;tState='run';paintTimer();
-  tInt=setInterval(()=>{
-    tLeft--;
-    if(tLeft<=0){clearInterval(tInt);tState='go';paintTimer();vibe()}
-    else paintTimer();
-  },1000);
+  clearInterval(tInt);tEnd=Date.now()+sec*1000;tState='run';paintTimer();
+  tInt=setInterval(timerTick,250);
 }
 function stopTimer(){clearInterval(tInt);tState='idle';paintTimer()}
 function paintTimer(){
   const el=$('timer');
   el.classList.remove('run','go');
-  if(tState==='run'){el.classList.add('run');el.textContent=Math.floor(tLeft/60)+':'+String(tLeft%60).padStart(2,'0')}
+  if(tState==='run'){
+    const left=Math.max(0,timerLeft());
+    el.classList.add('run');el.textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
+  }
   else if(tState==='go'){el.classList.add('go');el.textContent='Go'}
   else el.textContent='Rest';
 }
+/* ================= stale-tab / background safety ================= */
+/* If the app is open in more than one tab, a stale tab's in-memory copy can
+   overwrite sets another tab logged. Every tap is persisted immediately, so
+   storage is always the freshest truth — re-adopt it whenever this tab comes
+   back into view, before the user can tap anything. Skipped while storage is
+   blocked (then memory is AHEAD of storage and must not be dropped). */
+function syncFromStorage(){
+  if(loadCorrupt||storageBlocked)return;
+  let raw=null;
+  try{raw=localStorage.getItem(KEY)}catch(e){return}
+  if(!raw)return;
+  try{
+    const st=JSON.parse(raw);
+    if(st&&typeof st==='object'&&st.weights&&st.history!==undefined){
+      state=st;
+      for(const id in EX){if(!(id in state.weights))state.weights[id]=EX[id].w0}
+      if(!state.history)state.history={};
+      ensurePending();
+      render();
+    }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'){syncFromStorage();timerTick()}
+});
+addEventListener('pageshow',()=>{syncFromStorage();timerTick()});
+addEventListener('focus',()=>syncFromStorage());
 function vibe(){try{navigator.vibrate&&navigator.vibrate([180,90,180])}catch(e){}}
 $('timer').onclick=stopTimer;
 
